@@ -68,19 +68,17 @@ from transformers import AutoTokenizer, AutoModel, AutoConfig
 import torch
 
 # 全连接层，将dimension从768 -> 256
-def reduce_dimension(fc_model, model_output):
-    weight = fc_model["linear.weight"]
-    bias = fc_model["linear.bias"]
-    # First element of model_output contains all token embeddings
-    model_output = model_output[0]
+def reduce_dimension(reduce_model, model_output):
+    weight = reduce_model["linear.weight"]
+    bias = reduce_model["linear.bias"]
     output = torch.matmul(model_output, weight.T)
     output = output + bias
     return output
 
 # Mean Pooling - Take attention mask into account for correct averaging
-def mean_pooling_new(model_output, attention_mask):
+def mean_pooling(model_output, attention_mask):
     # First element of model_output contains all token embeddings
-    token_embeddings = model_output
+    token_embeddings = model_output[0]
     input_mask_expanded = attention_mask.unsqueeze(
         -1).expand(token_embeddings.size()).float()
     return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
@@ -102,10 +100,10 @@ encoded_input = tokenizer(sentences, padding=True,
 with torch.no_grad():
     model_output = model(**encoded_input)
 
-# 首先进行降维
-output = reduce_dimension(fc_model, model_output)
-# Perform pooling. In this case, mean pooling.
-sentence_embeddings = mean_pooling_new(output, encoded_input['attention_mask'])
+# 1. 进行pooling，将多个词向量转换为一个句向量
+sentence_embeddings = mean_pooling(model_output, encoded_input['attention_mask'])
+# 2. 降维，将768维的句向量通过全连接层转换为256维
+sentence_embeddings = reduce_dimension(fc_model, sentence_embeddings)
 
 print("Sentence embeddings:")
 print(sentence_embeddings.shape)
