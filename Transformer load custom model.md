@@ -92,6 +92,7 @@ sentences = ["到期不能按时还款怎么办", "剩余欠款还有多少？"]
 tokenizer = AutoTokenizer.from_pretrained(model_dir)
 model = AutoModel.from_pretrained(model_dir)
 
+# 参数 map_location="cuda:0"，可设置模型加载到指定device
 fc_model = torch.load("Transformer_custom_model/2_Dense/pytorch_model.bin")
 # Tokenize sentences
 encoded_input = tokenizer(sentences, padding=True,
