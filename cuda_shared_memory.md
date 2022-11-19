@@ -1,4 +1,4 @@
-# CUDA shared Memory
+# CUDA shared Memory and Matrix Mulplication
 
 ## CUDA内存模型
 CUDA内存模型如下图所示：
@@ -16,14 +16,24 @@ CUDA内存模型如下图所示：
 下图表示CUDA中变量的类型：
 ![CUDA Variable Type](image/CUDA_Variable_Type_Qualifiers.png)
 
-**Global Memory**：
+``shared memory``和``register``是**CUDA**设备中较为稀缺的资源，合理使用他们这些资源显得尤为重要。在一个**SM**中，包含一定数量的线程和寄存器，假设为1536个线程以及16384个寄存器。假设所有线程并发运行，那么每个线程中只有**16384/1536=10**个寄存器。如果在一个线程中使用到了11个寄存器，那么并发运行的线程就会减少(即少于1536的并发)，并且会以``Block``为颗粒度降低运行效率。假设一个``block``包含512个线程，那么一次性会减少512个线程的并发量。因此下一次程序执行的时候，只有1024个线程并发运行，减少了1/3。``share memory``同理。
 
-## 矩阵乘法
+在使用``share memory``时，可以在运行时动态决定每个``kernel``使用的大小，增加灵活度。可通过增加``extern``来实现这个功能，并且这是一维的线性数组。
+```c++
+extern __shared__ float Mds[];
+extern __shared__ float Nds[];
+```
+在调用``kernel``时，通过第三个参数来指定其大小。
+```c++
+size_t size=
+      calculate_appropriate_SM_usage(dev_prop.sharedMemPerBlock,...);
+matrixMulKernel<<<dimGrid, dimBlock, size>>>(Md, Nd, Pd, Width);
+```
 
 
 ## MatrixSum 示例
 
-```c++
+```c++{.javascript .numberLines .lineAnchors}
 // d_P中一个点用一个线程进行计算，一个block内正好包含TILE_WIDTH*TILE_WIDTH个线程。
 __global__ void MatrixMulKernel(float* d_M, float* d_N, float* d_P, int Width)
 {
